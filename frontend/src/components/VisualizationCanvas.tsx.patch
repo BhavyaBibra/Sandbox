@@ -1,0 +1,9 @@
+--- frontend/src/components/VisualizationCanvas.tsx
++++ frontend/src/components/VisualizationCanvas.tsx
+@@ -15,6 +15,7 @@
+     const { arrays, matrices, pointers, integers, linkedListNodes, linkedListPointers, treeNodes, treePointers, dicts, sets } = useVisualizationState(traceStep);
+ 
++    console.log("Canvas Extracted Data:", { arrays, matrices, dicts, sets, linkedListNodes, treeNodes });
++
+     if (!traceStep) {
+         return (

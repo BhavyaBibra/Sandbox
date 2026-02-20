@@ -1,0 +1,160 @@
+import { useMemo } from 'react';
+
+export interface VisualizationState {
+    arrays: { [key: string]: any[] };
+    matrices: { [key: string]: any[][] };
+    pointers: { [key: string]: number };
+    integers: { [key: string]: number };
+    strings: { [key: string]: string };
+    linkedListNodes: { [id: string]: { id: string, val: any, next: string | null } };
+    linkedListPointers: { [key: string]: string };
+    treeNodes: { [id: string]: { id: string, val: any, left: string | null, right: string | null } };
+    treePointers: { [key: string]: string };
+    dicts: { [key: string]: Record<string, any> };
+    sets: { [key: string]: any[] };
+}
+
+export const useVisualizationState = (traceStep: any): VisualizationState => {
+    return useMemo(() => {
+        if (!traceStep || !traceStep.stack || traceStep.stack.length === 0) {
+            return { arrays: {}, matrices: {}, pointers: {}, integers: {}, strings: {}, linkedListNodes: {}, linkedListPointers: {}, treeNodes: {}, treePointers: {}, dicts: {}, sets: {} };
+        }
+
+        const currentFrame = traceStep.stack[0]; // Active execution frame is at index 0
+        const locals = currentFrame.locals;
+        const objectRegistry = traceStep.objects || {};
+
+        const arrays: { [key: string]: any[] } = {};
+        const matrices: { [key: string]: any[][] } = {};
+        const pointers: { [key: string]: number } = {};
+        const integers: { [key: string]: number } = {};
+        const strings: { [key: string]: string } = {};
+        const linkedListNodes: { [id: string]: { id: string, val: any, next: string | null } } = {};
+        const linkedListPointers: { [key: string]: string } = {};
+        const treeNodes: { [id: string]: { id: string, val: any, left: string | null, right: string | null } } = {};
+        const treePointers: { [key: string]: string } = {};
+        const dicts: { [key: string]: Record<string, any> } = {};
+        const sets: { [key: string]: any[] } = {};
+
+        // Helper to recursively resolve values
+        const resolveValue = (val: any, seen: Set<string> = new Set()): { value: any, type: string } => {
+            if (val && typeof val === 'object' && val.type === 'ref') {
+                if (seen.has(val.id)) return { value: '[Circular]', type: 'cyclic' };
+
+                seen.add(val.id);
+                const obj = objectRegistry[val.id];
+                if (obj) {
+                    let resolvedObjValue = obj.value;
+                    if (Array.isArray(obj.value)) {
+                        resolvedObjValue = obj.value.map((v: any) => resolveValue(v, seen).value);
+                    } else if (typeof obj.value === 'object' && obj.value !== null) {
+                        resolvedObjValue = {};
+                        for (const [k, v] of Object.entries(obj.value)) {
+                            resolvedObjValue[k] = resolveValue(v, seen).value;
+                        }
+                    }
+                    seen.delete(val.id);
+                    return { value: resolvedObjValue, type: obj.type || 'unknown' };
+                }
+                seen.delete(val.id);
+            }
+            if (val && typeof val === 'object' && val.type === 'list') {
+                const resolvedListValue = Array.isArray(val.value)
+                    ? val.value.map((v: any) => resolveValue(v, seen).value)
+                    : val.value;
+                return { value: resolvedListValue, type: 'list' };
+            }
+            return { value: val, type: typeof val };
+        };
+
+        // Parse objects registry for Linked List nodes definition
+        Object.values(objectRegistry).forEach((obj: any) => {
+            if (obj.type === 'linked_list_node' && obj.value) {
+                const rawVal = obj.value.val;
+                const rawNext = obj.value.next;
+
+                const resolvedVal = resolveValue(rawVal).value; // Resolve in case val is a ref
+
+                let nextRef = null;
+                if (rawNext && typeof rawNext === 'object' && rawNext.type === 'ref') {
+                    nextRef = rawNext.id;
+                }
+
+                linkedListNodes[obj.id] = {
+                    id: obj.id,
+                    val: resolvedVal,
+                    next: nextRef
+                };
+            } else if (obj.type === 'tree_node' && obj.value) {
+                const rawVal = obj.value.val;
+                const rawLeft = obj.value.left;
+                const rawRight = obj.value.right;
+
+                const resolvedVal = resolveValue(rawVal).value;
+
+                let leftRef = null;
+                if (rawLeft && typeof rawLeft === 'object' && rawLeft.type === 'ref') {
+                    leftRef = rawLeft.id;
+                }
+
+                let rightRef = null;
+                if (rawRight && typeof rawRight === 'object' && rawRight.type === 'ref') {
+                    rightRef = rawRight.id;
+                }
+
+                treeNodes[obj.id] = {
+                    id: obj.id,
+                    val: resolvedVal,
+                    left: leftRef,
+                    right: rightRef
+                };
+            }
+        });
+
+        // Parse locals
+        Object.entries(locals).forEach(([key, value]) => {
+            // First pass to extract Linked List / Tree pointers directly without deep resolving
+            const valAny = value as any;
+            if (valAny && typeof valAny === 'object' && valAny.type === 'ref') {
+                const targetObj = objectRegistry[valAny.id];
+                if (targetObj && targetObj.type === 'linked_list_node') {
+                    linkedListPointers[key] = valAny.id;
+                    return; // Skip standard value hydration below
+                } else if (targetObj && targetObj.type === 'tree_node') {
+                    treePointers[key] = valAny.id;
+                    return;
+                }
+            }
+
+            const { value: resolvedValue, type } = resolveValue(value);
+
+            if (type === 'matrix') {
+                matrices[key] = resolvedValue;
+            } else if (type === 'dict') {
+                dicts[key] = resolvedValue;
+            } else if (type === 'set') {
+                sets[key] = resolvedValue;
+            } else if (Array.isArray(resolvedValue)) {
+                arrays[key] = resolvedValue;
+            } else if (typeof resolvedValue === 'number') {
+                // Heuristic for pointers
+                if (['i', 'j', 'k', 'left', 'right', 'low', 'high', 'mid', 'start', 'end', 'row', 'col'].includes(key)) {
+                    pointers[key] = resolvedValue;
+                }
+                integers[key] = resolvedValue;
+            } else if (typeof resolvedValue === 'string') {
+                // Check if it's a string
+                strings[key] = resolvedValue;
+            }
+        });
+
+        // Sort arrays and matrices
+        const sortedArrays: { [key: string]: any[] } = {};
+        Object.keys(arrays).sort().forEach(key => sortedArrays[key] = arrays[key]);
+
+        const sortedMatrices: { [key: string]: any[][] } = {};
+        Object.keys(matrices).sort().forEach(key => sortedMatrices[key] = matrices[key]);
+
+        return { arrays: sortedArrays, matrices: sortedMatrices, pointers, integers, strings, linkedListNodes, linkedListPointers, treeNodes, treePointers, dicts, sets };
+    }, [traceStep]);
+};
