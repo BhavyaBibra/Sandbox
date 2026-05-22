@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import type { Toast } from '../hooks/useToast';
 
 interface ToastContainerProps {
@@ -7,16 +7,18 @@ interface ToastContainerProps {
     onRemove: (id: string) => void;
 }
 
-const iconMap = {
+const iconMap: Record<Toast['type'], React.ReactNode> = {
     success: <CheckCircle2 size={16} className="text-accent-success" />,
     error: <AlertCircle size={16} className="text-red-400" />,
     info: <Info size={16} className="text-accent-primary" />,
+    warning: <AlertTriangle size={16} className="text-amber-400" />,
 };
 
-const borderMap = {
+const borderMap: Record<Toast['type'], string> = {
     success: 'border-accent-success/30',
     error: 'border-red-500/30',
     info: 'border-accent-primary/30',
+    warning: 'border-amber-400/30',
 };
 
 const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove }) => {

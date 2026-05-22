@@ -3,6 +3,8 @@ import copy
 import traceback
 import types
 import inspect
+import math
+from collections import deque, defaultdict, Counter, OrderedDict
 
 class TraceRunner:
     def __init__(self):
@@ -26,7 +28,7 @@ class TraceRunner:
             return True
             
         # Whitelist built-in containers
-        if isinstance(obj, (list, dict, set, tuple)):
+        if isinstance(obj, (list, dict, set, tuple, deque, frozenset)):
             return True
 
         # Blacklist using inspect module
@@ -48,6 +50,13 @@ class TraceRunner:
         return True
 
     def _detect_type(self, obj):
+        # Deque → treat as list for visualization
+        if isinstance(obj, deque):
+            return 'list'
+
+        if isinstance(obj, tuple):
+            return 'tuple'
+
         if isinstance(obj, list):
             # Check for 2D Matrix (list of lists with same length)
             if obj and all(isinstance(x, list) and len(x) == len(obj[0]) for x in obj):
@@ -62,9 +71,10 @@ class TraceRunner:
         if hasattr(obj, 'val') and (hasattr(obj, 'left') or hasattr(obj, 'right')):
              return 'tree_node'
 
-        if isinstance(obj, dict):
+        # defaultdict, Counter, OrderedDict → treat as dict
+        if isinstance(obj, (dict, defaultdict, Counter, OrderedDict)):
             return 'dict'
-        if isinstance(obj, set):
+        if isinstance(obj, (set, frozenset)):
             return 'set'
             
         # Check for user-defined instance (not a class itself, but has __dict__)
@@ -76,7 +86,16 @@ class TraceRunner:
     def _serialize(self, obj, depth=0):
         if depth > 5: return "<max_depth_exceeded>"
         
-        if isinstance(obj, (int, float, bool, str, type(None))):
+        if isinstance(obj, bool):
+             return obj
+        if isinstance(obj, (int, str, type(None))):
+             return obj
+        if isinstance(obj, float):
+             # Handle special float values that aren't JSON-serializable
+             if math.isinf(obj):
+                 return "Infinity" if obj > 0 else "-Infinity"
+             if math.isnan(obj):
+                 return "NaN"
              return obj
 
         try:
@@ -91,15 +110,21 @@ class TraceRunner:
             serialized_value = None
 
             if obj_type == 'list' or obj_type == 'matrix':
-                 # Serialize content recursively
-                 content = [self._serialize(x, depth + 1) for x in obj[:20]] + (["<truncated>"] if len(obj) > 20 else [])
+                 # Serialize content recursively (works for list, deque, matrix)
+                 items = list(obj)  # Convert deque/list to list for uniform slicing
+                 content = [self._serialize(x, depth + 1) for x in items[:20]] + (["<truncated>"] if len(items) > 20 else [])
                  serialized_value = {"type": obj_type, "id": obj_id, "value": content}
+
+            elif obj_type == 'tuple':
+                 content = [self._serialize(x, depth + 1) for x in obj[:20]]
+                 serialized_value = {"type": "tuple", "id": obj_id, "value": content}
 
             elif obj_type == 'dict':
                  content = {str(k): self._serialize(v, depth + 1) for k, v in list(obj.items())[:20]}
                  serialized_value = {"type": "dict", "id": obj_id, "value": content}
             
             elif obj_type == 'set':
+                 # Works for both set and frozenset
                  content = [self._serialize(x, depth + 1) for x in list(obj)[:20]]
                  serialized_value = {"type": "set", "id": obj_id, "value": content}
 
@@ -201,6 +226,7 @@ class TraceRunner:
     def run(self, code):
         self.crashed = False
         self.crash_message = None
+        self.truncated = False
         try:
             namespace = {}
             compiled_code = compile(code, "<string>", "exec")
@@ -212,6 +238,10 @@ class TraceRunner:
         finally:
             sys.settrace(None)
         
+        # Flag if we hit the step limit
+        if self.step_count >= self.max_steps:
+            self.truncated = True
+        
         # If execution succeeded (no uncaught exception), 
         # strip any spurious exception fields from trace steps
         # (these were caught exceptions from internal Python operations)
@@ -221,3 +251,4 @@ class TraceRunner:
                     del step["exception"]
         
         return self.trace_data
+

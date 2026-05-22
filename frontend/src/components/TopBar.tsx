@@ -1,4 +1,4 @@
-import { Play, Pause, SkipForward, SkipBack, RotateCcw, Activity, LayoutGrid, Sparkles, Loader2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, RotateCcw, Activity, LayoutGrid, Sparkles, Loader2, GitBranch, Undo2, Layers } from 'lucide-react';
 
 interface TopBarProps {
     onRun: () => void;
@@ -14,6 +14,10 @@ interface TopBarProps {
     onStepFunction: () => void;
     onStepLoop: () => void;
     onStepPointer: () => void;
+    onStepRecursion: () => void;
+    onStepBacktrack: () => void;
+    onStepMutation: () => void;
+    isRecursive: boolean;
     onOpenGallery: (isDevMode: boolean) => void;
     onToggleChat: () => void;
     onStepBackward: () => void;
@@ -34,6 +38,10 @@ const TopBar: React.FC<TopBarProps> = ({
     onStepFunction,
     onStepLoop,
     onStepPointer,
+    onStepRecursion,
+    onStepBacktrack,
+    onStepMutation,
+    isRecursive,
     onOpenGallery,
     onToggleChat,
     onStepBackward,
@@ -117,6 +125,38 @@ const TopBar: React.FC<TopBarProps> = ({
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 20 9-11-9-9-9 9 9 11Z" /><path d="m12 20v4" /></svg>
                         </button>
                     </div>
+
+                    {/* v2 Semantic Stepping — shown when recursion detected */}
+                    {isRecursive && (
+                        <div className="flex items-center gap-1 border-r border-border-default pr-2 mr-1">
+                            <button
+                                onClick={onStepRecursion}
+                                disabled={!canStep}
+                                className="p-1.5 rounded hover:bg-border-hover text-purple-400 disabled:opacity-30 transition-colors duration-200"
+                                title="Step Recursion (next depth change)"
+                            >
+                                <GitBranch size={14} />
+                            </button>
+
+                            <button
+                                onClick={onStepBacktrack}
+                                disabled={!canStep}
+                                className="p-1.5 rounded hover:bg-border-hover text-amber-400 disabled:opacity-30 transition-colors duration-200"
+                                title="Step Backtrack (next backtrack event)"
+                            >
+                                <Undo2 size={14} />
+                            </button>
+
+                            <button
+                                onClick={onStepMutation}
+                                disabled={!canStep}
+                                className="p-1.5 rounded hover:bg-border-hover text-cyan-400 disabled:opacity-30 transition-colors duration-200"
+                                title="Step Mutation Cluster (next multi-variable change)"
+                            >
+                                <Layers size={14} />
+                            </button>
+                        </div>
+                    )}
 
                     <button
                         onClick={onStepBackward}

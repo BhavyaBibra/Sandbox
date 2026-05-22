@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 
 export interface VisualizationState {
     arrays: { [key: string]: any[] };
+    stacks: { [key: string]: any[] };
+    boards: { [key: string]: any[][] };
     matrices: { [key: string]: any[][] };
     pointers: { [key: string]: number };
     integers: { [key: string]: number };
@@ -17,7 +19,7 @@ export interface VisualizationState {
 export const useVisualizationState = (traceStep: any): VisualizationState => {
     return useMemo(() => {
         if (!traceStep || !traceStep.stack || traceStep.stack.length === 0) {
-            return { arrays: {}, matrices: {}, pointers: {}, integers: {}, strings: {}, linkedListNodes: {}, linkedListPointers: {}, treeNodes: {}, treePointers: {}, dicts: {}, sets: {} };
+            return { arrays: {}, stacks: {}, boards: {}, matrices: {}, pointers: {}, integers: {}, strings: {}, linkedListNodes: {}, linkedListPointers: {}, treeNodes: {}, treePointers: {}, dicts: {}, sets: {} };
         }
 
         const currentFrame = traceStep.stack[0]; // Active execution frame is at index 0
@@ -25,6 +27,8 @@ export const useVisualizationState = (traceStep: any): VisualizationState => {
         const objectRegistry = traceStep.objects || {};
 
         const arrays: { [key: string]: any[] } = {};
+        const stacks: { [key: string]: any[] } = {};
+        const boards: { [key: string]: any[][] } = {};
         const matrices: { [key: string]: any[][] } = {};
         const pointers: { [key: string]: number } = {};
         const integers: { [key: string]: number } = {};
@@ -63,6 +67,12 @@ export const useVisualizationState = (traceStep: any): VisualizationState => {
                     ? val.value.map((v: any) => resolveValue(v, seen).value)
                     : val.value;
                 return { value: resolvedListValue, type: 'list' };
+            }
+            if (val && typeof val === 'object' && val.type === 'tuple') {
+                const resolvedTupleValue = Array.isArray(val.value)
+                    ? val.value.map((v: any) => resolveValue(v, seen).value)
+                    : val.value;
+                return { value: resolvedTupleValue, type: 'tuple' };
             }
             return { value: val, type: typeof val };
         };
@@ -129,16 +139,41 @@ export const useVisualizationState = (traceStep: any): VisualizationState => {
             const { value: resolvedValue, type } = resolveValue(value);
 
             if (type === 'matrix') {
-                matrices[key] = resolvedValue;
+                // Board detection: variable named board/grid and square NxN where N ≤ 9
+                const BOARD_NAMES = new Set(['board', 'grid', 'puzzle', 'sudoku', 'queens']);
+                const lk = key.toLowerCase();
+                const isSquare = resolvedValue.length > 0 && resolvedValue.length === resolvedValue[0]?.length;
+                const isSmall = resolvedValue.length <= 9;
+                if ((BOARD_NAMES.has(lk) || lk.includes('board')) && isSquare && isSmall) {
+                    boards[key] = resolvedValue;
+                } else {
+                    matrices[key] = resolvedValue;
+                }
             } else if (type === 'dict') {
                 dicts[key] = resolvedValue;
             } else if (type === 'set') {
                 sets[key] = resolvedValue;
             } else if (Array.isArray(resolvedValue)) {
-                arrays[key] = resolvedValue;
+                // Stack detection heuristic: variable names suggesting stack usage
+                const STACK_NAMES = new Set(['stack', 'st', 'stk', 'mono_stack', 'min_stack', 'max_stack']);
+                const lowerKey = key.toLowerCase();
+                if (STACK_NAMES.has(lowerKey) || lowerKey.includes('stack')) {
+                    stacks[key] = resolvedValue;
+                } else {
+                    arrays[key] = resolvedValue;
+                }
             } else if (typeof resolvedValue === 'number') {
-                // Heuristic for pointers
-                if (['i', 'j', 'k', 'left', 'right', 'low', 'high', 'mid', 'start', 'end', 'row', 'col'].includes(key)) {
+                // Broad pointer heuristic for common LeetCode variable names
+                const POINTER_NAMES = new Set([
+                    'i', 'j', 'k', 'l', 'n', 'm', 'p', 'q',
+                    'left', 'right', 'low', 'high', 'lo', 'hi',
+                    'mid', 'start', 'end', 'top', 'bottom',
+                    'row', 'col', 'r', 'c', 'nr', 'nc', 'dr', 'dc',
+                    'slow', 'fast', 'prev', 'curr', 'head', 'tail',
+                    'begin', 'idx', 'pos', 'ptr', 'front', 'rear',
+                    'first', 'last', 'count', 'index',
+                ]);
+                if (POINTER_NAMES.has(key)) {
                     pointers[key] = resolvedValue;
                 }
                 integers[key] = resolvedValue;
@@ -155,6 +190,6 @@ export const useVisualizationState = (traceStep: any): VisualizationState => {
         const sortedMatrices: { [key: string]: any[][] } = {};
         Object.keys(matrices).sort().forEach(key => sortedMatrices[key] = matrices[key]);
 
-        return { arrays: sortedArrays, matrices: sortedMatrices, pointers, integers, strings, linkedListNodes, linkedListPointers, treeNodes, treePointers, dicts, sets };
+        return { arrays: sortedArrays, stacks, boards, matrices: sortedMatrices, pointers, integers, strings, linkedListNodes, linkedListPointers, treeNodes, treePointers, dicts, sets };
     }, [traceStep]);
 };

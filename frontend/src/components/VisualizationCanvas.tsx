@@ -1,7 +1,9 @@
 import { useState, useCallback } from 'react';
 import { useVisualizationState } from '../hooks/useVisualizationState';
+import { useSemanticGraph } from '../hooks/useSemanticGraph';
 import CallStack from './CallStack';
 import VisualizationRouter from './VisualizationRouter';
+import RecursionTreeVisualizer from './RecursionTreeVisualizer';
 import InsightOverlay from './InsightOverlay';
 import useVariableChanges from '../hooks/useVariableChanges';
 import type { Insight } from '../hooks/useInsightEngine';
@@ -18,8 +20,9 @@ interface VisualizationCanvasProps {
 
 const VisualizationCanvas: React.FC<VisualizationCanvasProps> = ({ traceStep, insights = [], onRun, isRunning = false, trace = [], currentStep = 0 }) => {
     const state = useVisualizationState(traceStep);
-    const { arrays, matrices, pointers, integers, strings, linkedListNodes, linkedListPointers, treeNodes, treePointers, dicts, sets } = state;
+    const { arrays, stacks, boards, matrices, pointers, integers, strings, linkedListNodes, linkedListPointers, treeNodes, treePointers, dicts, sets } = state;
     const { changed, isNew } = useVariableChanges(trace, currentStep);
+    const semanticGraph = useSemanticGraph(trace);
 
     const [focusedObjectId, setFocusedObjectId] = useState<string | null>(null);
     const [watchlist, setWatchlist] = useState<Set<string>>(new Set());
@@ -107,6 +110,8 @@ const VisualizationCanvas: React.FC<VisualizationCanvasProps> = ({ traceStep, in
             <div className="flex flex-col gap-12 pb-20 mt-8">
                 <VisualizationRouter
                     arrays={arrays}
+                    stacks={stacks || {}}
+                    boards={boards || {}}
                     matrices={matrices}
                     strings={strings || {}}
                     dicts={dicts || {}}
@@ -122,8 +127,17 @@ const VisualizationCanvas: React.FC<VisualizationCanvasProps> = ({ traceStep, in
                     toggleWatchlist={toggleWatchlist}
                 />
 
+                {/* Recursion Tree — shown when recursion detected */}
+                {semanticGraph.isRecursive && semanticGraph.callTree.length > 0 && (
+                    <RecursionTreeVisualizer
+                        callTree={semanticGraph.callTree}
+                        currentStep={currentStep}
+                        maxDepth={semanticGraph.maxDepth}
+                    />
+                )}
+
                 {/* Fallback for when no complex data structures are present */}
-                {Object.keys(arrays).length === 0 && Object.keys(matrices).length === 0 && Object.keys(linkedListNodes || {}).length === 0 && Object.keys(treeNodes || {}).length === 0 && Object.keys(dicts || {}).length === 0 && Object.keys(sets || {}).length === 0 && Object.keys(strings || {}).length === 0 && (
+                {Object.keys(arrays).length === 0 && Object.keys(stacks || {}).length === 0 && Object.keys(boards || {}).length === 0 && Object.keys(matrices).length === 0 && Object.keys(linkedListNodes || {}).length === 0 && Object.keys(treeNodes || {}).length === 0 && Object.keys(dicts || {}).length === 0 && Object.keys(sets || {}).length === 0 && Object.keys(strings || {}).length === 0 && (
                     <div className="grid grid-cols-2 gap-4">
                         {Object.entries(integers).map(([name, val]) => (
                             <div key={name} className="p-4 bg-bg-secondary border border-border-default rounded flex justify-between items-center">

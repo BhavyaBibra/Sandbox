@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import type { RecursionEvent } from './useSemanticGraph';
 
 interface TraceStep {
     line: number;
@@ -14,13 +15,15 @@ interface UseSemanticSteppingProps {
     currentStep: number;
     setCurrentStep: (step: number) => void;
     pause: () => void;
+    recursionEvents?: RecursionEvent[];
 }
 
 export const useSemanticStepping = ({
     trace,
     currentStep,
     setCurrentStep,
-    pause
+    pause,
+    recursionEvents = [],
 }: UseSemanticSteppingProps) => {
 
     const stepFunction = useCallback(() => {
@@ -103,9 +106,72 @@ export const useSemanticStepping = ({
         setCurrentStep(trace.length - 1);
     }, [trace, currentStep, setCurrentStep, pause]);
 
+    // ─── v2: Step by recursion depth change ─────
+    const stepRecursion = useCallback(() => {
+        if (!trace || currentStep >= trace.length - 1) return;
+        pause();
+
+        // Find next recursion event after current step
+        for (const event of recursionEvents) {
+            if (event.step > currentStep) {
+                setCurrentStep(event.step);
+                return;
+            }
+        }
+        setCurrentStep(trace.length - 1);
+    }, [trace, currentStep, setCurrentStep, pause, recursionEvents]);
+
+    // ─── v2: Step to next backtrack event ─────
+    const stepBacktrack = useCallback(() => {
+        if (!trace || currentStep >= trace.length - 1) return;
+        pause();
+
+        for (const event of recursionEvents) {
+            if (event.step > currentStep && event.type === 'backtrack') {
+                setCurrentStep(event.step);
+                return;
+            }
+        }
+        setCurrentStep(trace.length - 1);
+    }, [trace, currentStep, setCurrentStep, pause, recursionEvents]);
+
+    // ─── v2: Step to next mutation cluster (2+ vars change) ─────
+    const stepMutation = useCallback(() => {
+        if (!trace || currentStep >= trace.length - 1) return;
+        pause();
+
+        for (let i = currentStep + 1; i < trace.length; i++) {
+            const curr = trace[i];
+            const prev = trace[i - 1];
+
+            if (!curr.stack?.[0]?.locals || !prev.stack?.[0]?.locals) continue;
+
+            const currLocals = curr.stack[0].locals;
+            const prevLocals = prev.stack[0].locals;
+            let changes = 0;
+
+            for (const key of Object.keys(currLocals)) {
+                if (key in prevLocals && JSON.stringify(currLocals[key]) !== JSON.stringify(prevLocals[key])) {
+                    changes++;
+                }
+            }
+
+            if (changes >= 2) {
+                setCurrentStep(i);
+                return;
+            }
+        }
+
+        setCurrentStep(trace.length - 1);
+    }, [trace, currentStep, setCurrentStep, pause]);
+
     return {
         stepFunction,
         stepLoop,
-        stepPointer
+        stepPointer,
+        stepRecursion,
+        stepBacktrack,
+        stepMutation,
     };
 };
+

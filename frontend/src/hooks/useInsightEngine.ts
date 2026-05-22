@@ -1,12 +1,18 @@
 import { useMemo } from 'react';
+import type { SemanticAnnotation } from './useSemanticGraph';
 
 export interface Insight {
     id: string; // unique ID for animation keying
     message: string;
-    type: 'update' | 'pointer' | 'loop' | 'system';
+    type: 'update' | 'pointer' | 'loop' | 'system' | 'recursion' | 'backtrack' | 'mutation' | 'board';
 }
 
-export const useInsightEngine = (trace: any[], currentStep: number, code: string): Insight[] => {
+export const useInsightEngine = (
+    trace: any[],
+    currentStep: number,
+    code: string,
+    semanticAnnotations: SemanticAnnotation[] = []
+): Insight[] => {
     return useMemo(() => {
         if (!trace || trace.length === 0 || currentStep <= 0) {
             return [];
@@ -79,6 +85,25 @@ export const useInsightEngine = (trace: any[], currentStep: number, code: string
             }
         }
 
+        // 3. Semantic Annotations from the execution graph
+        for (const annotation of semanticAnnotations) {
+            if (annotation.step === currentStep) {
+                const typeMap: Record<SemanticAnnotation['type'], Insight['type']> = {
+                    recursion_entry: 'recursion',
+                    recursion_exit: 'recursion',
+                    backtrack: 'backtrack',
+                    mutation_cluster: 'mutation',
+                    board_decision: 'board',
+                };
+                insights.push({
+                    id: `sem-${annotation.type}-${currentStep}`,
+                    message: annotation.message,
+                    type: typeMap[annotation.type] || 'system',
+                });
+            }
+        }
+
         return insights;
-    }, [trace, currentStep, code]);
+    }, [trace, currentStep, code, semanticAnnotations]);
 };
+

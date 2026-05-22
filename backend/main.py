@@ -71,7 +71,8 @@ async def run_code(request: ExecutionRequest):
         trace=tracer.trace_data,
         error=error_message,
         pattern=pattern_result,
-        output=stdout_output
+        output=stdout_output,
+        truncated=tracer.truncated
     )
 
 # Simple in-memory rate limiting: session_ip -> (count, reset_time)

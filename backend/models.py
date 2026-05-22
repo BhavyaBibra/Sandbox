@@ -31,6 +31,7 @@ class ExecutionResponse(BaseModel):
     error: Optional[str] = None
     pattern: Optional[Dict[str, Any]] = None
     output: Optional[str] = None
+    truncated: bool = False
 
 class ChatContext(BaseModel):
     code: str

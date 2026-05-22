@@ -13,6 +13,7 @@ import ToastContainer from './components/ToastContainer';
 import ConsoleOutput from './components/ConsoleOutput';
 import { usePlaybackController } from './hooks/usePlaybackController';
 import { useSemanticStepping } from './hooks/useSemanticStepping';
+import { useSemanticGraph } from './hooks/useSemanticGraph';
 import { useInsightEngine } from './hooks/useInsightEngine';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useToast from './hooks/useToast';
@@ -84,12 +85,16 @@ function App() {
     initialSpeed: 500
   });
 
+  // Semantic Graph
+  const semanticGraph = useSemanticGraph(trace);
+
   // Semantic Stepping
-  const { stepFunction, stepLoop, stepPointer } = useSemanticStepping({
+  const { stepFunction, stepLoop, stepPointer, stepRecursion, stepBacktrack, stepMutation } = useSemanticStepping({
     trace,
     currentStep,
     setCurrentStep,
-    pause
+    pause,
+    recursionEvents: semanticGraph.recursionEvents,
   });
 
   const handleRun = async (overrideCode?: string) => {
@@ -121,6 +126,9 @@ function App() {
           // is the authoritative source for crash detection, not the trace data
           setCurrentStep(0);
           addToast(`Traced ${response.data.trace.length} steps successfully`, 'success');
+          if (response.data.truncated) {
+            addToast(`Trace truncated at ${response.data.trace.length} steps — simplify code to see full execution`, 'warning');
+          }
         }
         setIsRunning(false);
       }
@@ -231,6 +239,10 @@ function App() {
               onStepFunction={stepFunction}
               onStepLoop={stepLoop}
               onStepPointer={stepPointer}
+              onStepRecursion={stepRecursion}
+              onStepBacktrack={stepBacktrack}
+              onStepMutation={stepMutation}
+              isRecursive={semanticGraph.isRecursive}
               onOpenGallery={handleOpenGallery}
               onToggleChat={() => setIsChatOpen(!isChatOpen)}
             />

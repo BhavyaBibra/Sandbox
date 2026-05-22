@@ -15,7 +15,7 @@ const PADDING = 40;
 const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({ nodes, pointers }) => {
     if (Object.keys(nodes).length === 0) return null;
 
-    const { lists, nodePositions, totalWidth, totalHeight } = useMemo(() => {
+    const { nodePositions, totalWidth, totalHeight } = useMemo(() => {
         const visited = new Set<string>();
         const inDegree: Record<string, number> = {};
 
@@ -71,7 +71,7 @@ const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({ nodes, poin
         });
 
         return {
-            lists: outLists,
+
             nodePositions: positions,
             totalWidth: maxCol * X_SPACING + CELL_SIZE + PADDING * 2 + 60,
             totalHeight: outLists.length * Y_SPACING + CELL_SIZE + PADDING * 2 + 40

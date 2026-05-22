@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 import ArrayVisualizer from './ArrayVisualizer';
+import StackVisualizer from './StackVisualizer';
+import BoardVisualizer from './BoardVisualizer';
 import MatrixVisualizer from './MatrixVisualizer';
 import LinkedListVisualizer from './LinkedListVisualizer';
 import TreeVisualizer from './TreeVisualizer';
@@ -10,6 +12,8 @@ import { Star } from 'lucide-react';
 
 interface VisualizationRouterProps {
     arrays: { [key: string]: any[] };
+    stacks: { [key: string]: any[] };
+    boards: { [key: string]: any[][] };
     matrices: { [key: string]: any[][] };
     strings: { [key: string]: string };
     dicts: { [key: string]: Record<string, any> };
@@ -26,7 +30,7 @@ interface VisualizationRouterProps {
 }
 
 // Helper types for the sorted list
-type VisType = 'array' | 'matrix' | 'string' | 'dict' | 'set' | 'linked_list' | 'tree';
+type VisType = 'array' | 'stack' | 'board' | 'matrix' | 'string' | 'dict' | 'set' | 'linked_list' | 'tree';
 
 interface VisItem {
     name: string;
@@ -36,6 +40,8 @@ interface VisItem {
 
 const VisualizationRouter: React.FC<VisualizationRouterProps> = ({
     arrays,
+    stacks,
+    boards,
     matrices,
     strings,
     dicts,
@@ -55,6 +61,8 @@ const VisualizationRouter: React.FC<VisualizationRouterProps> = ({
         const items: VisItem[] = [];
 
         Object.entries(arrays).forEach(([name, data]) => items.push({ name, type: 'array', data }));
+        Object.entries(stacks || {}).forEach(([name, data]) => items.push({ name, type: 'stack', data }));
+        Object.entries(boards || {}).forEach(([name, data]) => items.push({ name, type: 'board', data }));
         Object.entries(matrices).forEach(([name, data]) => items.push({ name, type: 'matrix', data }));
         Object.entries(strings).forEach(([name, data]) => items.push({ name, type: 'string', data }));
         Object.entries(dicts || {}).forEach(([name, data]) => items.push({ name, type: 'dict', data }));
@@ -68,7 +76,7 @@ const VisualizationRouter: React.FC<VisualizationRouterProps> = ({
         // Sort the standard variables alphabetically
         items.sort((a, b) => a.name.localeCompare(b.name));
         return items;
-    }, [arrays, matrices, strings, dicts, sets]);
+    }, [arrays, stacks, boards, matrices, strings, dicts, sets]);
 
     const hasNodes = Object.keys(linkedListNodes || {}).length > 0;
     const hasTrees = Object.keys(treeNodes || {}).length > 0;
@@ -139,6 +147,23 @@ const VisualizationRouter: React.FC<VisualizationRouterProps> = ({
                     case 'array':
                         visualizer = (
                             <ArrayVisualizer
+                                name={item.name}
+                                data={item.data}
+                                pointers={pointers}
+                            />
+                        );
+                        break;
+                    case 'stack':
+                        visualizer = (
+                            <StackVisualizer
+                                name={item.name}
+                                data={item.data}
+                            />
+                        );
+                        break;
+                    case 'board':
+                        visualizer = (
+                            <BoardVisualizer
                                 name={item.name}
                                 data={item.data}
                                 pointers={pointers}
