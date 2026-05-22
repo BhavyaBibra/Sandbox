@@ -108,7 +108,8 @@ function App() {
     const codeToRun = typeof overrideCode === 'string' ? overrideCode : code;
 
     try {
-      const response = await axios.post('http://127.0.0.1:8000/run', { code: codeToRun });
+      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+      const response = await axios.post(`${apiUrl}/run`, { code: codeToRun });
       if (response.data.error) {
         setError(response.data.error);
         addToast('Execution failed — see error below', 'error');

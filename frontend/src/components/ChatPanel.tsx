@@ -62,7 +62,8 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose, context }) => {
                 annotations: context.insights.map(i => i.message)
             };
 
-            const response = await axios.post('http://127.0.0.1:8000/api/chat', payload);
+            const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+            const response = await axios.post(`${apiUrl}/api/chat`, payload);
 
             setMessages(prev => [...prev, {
                 role: 'assistant',
