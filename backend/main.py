@@ -12,10 +12,10 @@ from dotenv import load_dotenv
 # Load the environment variables from the .env file
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
-from .models import ExecutionRequest, ExecutionResponse, ChatResponse, APIChatRequest
-from .tracer import TraceRunner
-from .sandbox import validate_code, SecurityError
-from .context_packager import package_chat_context
+from models import ExecutionRequest, ExecutionResponse, ChatResponse, APIChatRequest
+from tracer import TraceRunner
+from sandbox import validate_code, SecurityError
+from context_packager import package_chat_context
 
 app = FastAPI()
 
@@ -52,7 +52,7 @@ async def run_code(request: ExecutionRequest):
         pass  # tracer.run handles this internally
 
     # 3. Pattern Detection
-    from .pattern_detector import PatternDetector
+    from pattern_detector import PatternDetector
     detector = PatternDetector()
     pattern_result = detector.analyze(code)
     
@@ -106,7 +106,7 @@ async def api_chat(request: APIChatRequest, req: Request):
             annotations=request.annotations
         )
 
-        from .llm_client import generate_response
+        from llm_client import generate_response
         assistant_reply = generate_response(request.message, ctx)
         
         latency = time.time() - start_time
