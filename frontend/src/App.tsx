@@ -18,6 +18,7 @@ import { useInsightEngine } from './hooks/useInsightEngine';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 import useToast from './hooks/useToast';
 import ChatPanel from './components/ChatPanel';
+import TestCasesPanel from './components/TestCasesPanel';
 import './App.css';
 
 interface TraceStep {
@@ -36,15 +37,21 @@ interface PatternData {
 }
 
 const DEFAULT_CODE = `
-def is_palindrome(s):
-    left, right = 0, len(s) - 1
-    while left < right:
-        if s[left] != s[right]: return False
-        left += 1
-        right -= 1
-    return True
+class Solution:
+    def lengthOfLongestSubstring(self, s: str) -> int:
+        char_map = {}
+        max_length = 0
+        left = 0
 
-is_palindrome("racecar")
+        for right in range(len(s)):
+            current_char = s[right]
+            if current_char in char_map and char_map[current_char] >= left:
+                left = char_map[current_char] + 1
+            
+            char_map[current_char] = right
+            max_length = max(max_length, right - left + 1)
+            
+        return max_length
 `.trim();
 
 function App() {
@@ -54,6 +61,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [pattern, setPattern] = useState<PatternData | undefined>(undefined);
   const [consoleOutput, setConsoleOutput] = useState<string | null>(null);
+
+  // LeetCode Mode State
+  const [testCasesCode, setTestCasesCode] = useState<string>('s = "abcabcbb"');
+  const [expectedOutput, setExpectedOutput] = useState<string>('3');
 
   // Gallery State
   const [isGalleryOpen, setIsGalleryOpen] = useState<boolean>(false);
@@ -109,7 +120,12 @@ function App() {
 
     try {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-      const response = await axios.post(`${apiUrl}/run`, { code: codeToRun });
+      const payload = {
+        code: codeToRun,
+        test_cases: testCasesCode,
+        expected_output: expectedOutput
+      };
+      const response = await axios.post(`${apiUrl}/run`, payload);
       if (response.data.error) {
         setError(response.data.error);
         addToast('Execution failed — see error below', 'error');
@@ -311,6 +327,14 @@ function App() {
         visualizationPane={
           <VisualizationCanvas traceStep={currentTraceItem} insights={insights} onRun={handleRun} isRunning={isRunning} trace={trace} currentStep={currentStep} />
         }
+        testCasesPane={
+          <TestCasesPanel 
+            testCasesCode={testCasesCode} 
+            setTestCasesCode={setTestCasesCode} 
+            expectedOutput={expectedOutput} 
+            setExpectedOutput={setExpectedOutput} 
+          />
+        }
         chatPanel={
           <ChatPanel
             isOpen={isChatOpen}
@@ -320,7 +344,10 @@ function App() {
               currentLine: highlightLine || undefined,
               locals: currentTraceItem && currentTraceItem.stack.length > 0 ? currentTraceItem.stack[0].locals : {},
               insights: insights,
-              pattern: pattern?.pattern
+              pattern: pattern?.pattern,
+              testCases: testCasesCode,
+              expectedOutput: expectedOutput,
+              actualOutput: consoleOutput || undefined
             }}
           />
         }

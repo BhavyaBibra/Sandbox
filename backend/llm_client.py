@@ -14,11 +14,14 @@ def generate_response(message: str, context: dict) -> str:
     """
     Generate a response using the Groq API and the llama-3.1-8b-instant model.
     """
-    system_prompt = f"""You are Sandbox, an execution visualization tutor. Explain runtime behavior using provided execution context. Be concise, refer to variables explicitly, and avoid speculation. If context is insufficient, say so.
+    system_prompt = f"""You are Sandbox, an execution visualization tutor. Explain runtime behavior using provided execution context. Be concise, refer to variables explicitly, and avoid speculation. If the user provides an Expected Output that does not match the Actual Output, explicitly trace through the execution to pinpoint where the logic diverged from the expected behavior.
 
 Current Context:
 Execution Summary: {context.get('execution_summary', 'None')}
 Variable State: {context.get('variable_summary', 'None')}
+
+Output Verification:
+{context.get('output_verification', 'None')}
 
 Full Code:
 {context.get('full_code', 'None')}

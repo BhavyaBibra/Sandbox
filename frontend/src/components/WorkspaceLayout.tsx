@@ -6,6 +6,7 @@ interface WorkspaceLayoutProps {
     timelineScrubber?: React.ReactNode;
     editorPane: React.ReactNode;
     visualizationPane: React.ReactNode;
+    testCasesPane?: React.ReactNode;
     chatPanel?: React.ReactNode;
 }
 
@@ -15,6 +16,7 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
     editorPane,
     timelineScrubber,
     visualizationPane,
+    testCasesPane,
     chatPanel
 }) => {
     return (
@@ -43,14 +45,28 @@ const WorkspaceLayout: React.FC<WorkspaceLayoutProps> = ({
                         <div className="h-8 w-1 rounded-full bg-border-hover group-hover:bg-accent-primary transition-all duration-300 group-hover:h-12 group-hover:w-1.5 shadow-sm" />
                     </Separator>
 
-                    {/* Right Pane: Visualization */}
+                    {/* Right Pane: Visualization & Test Cases */}
                     <Panel
                         id="right-panel"
                         defaultSize={65}
                         minSize={10}
                         className="bg-bg-canvas flex flex-col relative shadow-[inset_10px_0_20px_-10px_rgba(0,0,0,0.5)] transition-[flex-grow] duration-300 ease-in-out"
                     >
-                        {visualizationPane}
+                        {testCasesPane ? (
+                            <Group orientation="vertical">
+                                <Panel defaultSize={80} minSize={20} className="flex flex-col relative">
+                                    {visualizationPane}
+                                </Panel>
+                                <Separator className="h-1.5 bg-bg-primary hover:bg-accent-primary/50 transition-colors duration-200 flex items-center justify-center cursor-row-resize z-elevated -mt-[3px] -mb-[3px] relative outline-none focus:bg-accent-primary group">
+                                    <div className="w-8 h-1 rounded-full bg-border-hover group-hover:bg-accent-primary transition-all duration-300 group-hover:w-12 group-hover:h-1.5 shadow-sm" />
+                                </Separator>
+                                <Panel defaultSize={20} minSize={5} collapsible={true} className="flex flex-col bg-bg-secondary relative border-t border-border-default">
+                                    {testCasesPane}
+                                </Panel>
+                            </Group>
+                        ) : (
+                            visualizationPane
+                        )}
                     </Panel>
                 </Group>
 

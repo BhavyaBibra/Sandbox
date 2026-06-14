@@ -3,6 +3,8 @@ from typing import List, Dict, Any, Optional, Union
 
 class ExecutionRequest(BaseModel):
     code: str
+    test_cases: Optional[str] = None
+    expected_output: Optional[str] = None
 
 class StackFrame(BaseModel):
     line: int
@@ -56,3 +58,6 @@ class APIChatRequest(BaseModel):
     code: Optional[str] = None
     snapshot: Optional[Dict[str, Any]] = None
     annotations: Optional[List[Any]] = None
+    test_cases: Optional[str] = None
+    expected_output: Optional[str] = None
+    actual_output: Optional[str] = None

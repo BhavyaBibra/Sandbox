@@ -4,7 +4,10 @@ from typing import Dict, Any, List, Optional
 def package_chat_context(
     code: Optional[str],
     snapshot: Optional[Dict[str, Any]],
-    annotations: Optional[List[Any]]
+    annotations: Optional[List[Any]],
+    test_cases: Optional[str] = None,
+    expected_output: Optional[str] = None,
+    actual_output: Optional[str] = None
 ) -> Dict[str, str]:
     """
     Converts execution state into a compact semantic context for LLMs.
@@ -86,13 +89,27 @@ def package_chat_context(
         if event_strs:
             recent_events = "Recent events: " + " | ".join(event_strs)
 
-    # 5. Build context object
+    # 5. Output Verification
+    output_verification = "No output verification requested."
+    if expected_output:
+        output_verification = f"Test Case:\n{test_cases}\n\nExpected Output: {expected_output}\n"
+        if actual_output:
+            output_verification += f"Actual Output: {actual_output}\n"
+            if actual_output.strip() != expected_output.strip():
+                output_verification += "STATUS: MISMATCH. The logic deviated from expectations."
+            else:
+                output_verification += "STATUS: SUCCESS. Output matched expected."
+        else:
+            output_verification += "STATUS: Execution did not complete or output was not captured."
+
+    # 6. Build context object
     context_obj = {
         "execution_summary": execution_summary,
         "recent_events": recent_events,
         "variable_summary": variable_summary,
         "full_code": full_code,
-        "code_focus": code_focus
+        "code_focus": code_focus,
+        "output_verification": output_verification
     }
 
     # Safety truncation — generous limits so LLM gets full picture

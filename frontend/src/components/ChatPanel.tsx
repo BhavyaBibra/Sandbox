@@ -13,6 +13,9 @@ interface ChatPanelProps {
         locals: Record<string, any>;
         insights: Insight[];
         pattern?: string;
+        testCases?: string;
+        expectedOutput?: string;
+        actualOutput?: string;
     };
 }
 
@@ -59,7 +62,10 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose, context }) => {
                         locals: context.locals
                     }]
                 },
-                annotations: context.insights.map(i => i.message)
+                annotations: context.insights.map(i => i.message),
+                test_cases: context.testCases,
+                expected_output: context.expectedOutput,
+                actual_output: context.actualOutput
             };
 
             const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -149,7 +155,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ isOpen, onClose, context }) => {
 
                 {/* Quick Actions */}
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    {['Explain this step', 'What are the variables?', 'Why did the pointer move?'].map(action => (
+                    {['Find the logic error', 'Explain this step', 'Why did the output mismatch?'].map(action => (
                         <button
                             key={action}
                             onClick={() => handleQuickAction(action)}

@@ -29,7 +29,8 @@ app.add_middleware(
 
 @app.post("/run", response_model=ExecutionResponse)
 async def run_code(request: ExecutionRequest):
-    code = request.code
+    from leetcode_wrapper import wrap_leetcode_code
+    code = wrap_leetcode_code(request.code, request.test_cases, request.expected_output)
     
     # 1. Static Analysis
     try:
@@ -103,7 +104,10 @@ async def api_chat(request: APIChatRequest, req: Request):
         ctx = package_chat_context(
             code=request.code,
             snapshot=request.snapshot,
-            annotations=request.annotations
+            annotations=request.annotations,
+            test_cases=request.test_cases,
+            expected_output=request.expected_output,
+            actual_output=request.actual_output
         )
 
         from llm_client import generate_response
